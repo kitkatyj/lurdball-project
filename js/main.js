@@ -1,5 +1,5 @@
 var canvas, ctx = null;
-var frameCounter = true;
+var frameCounter = false;
 var frameCount = 0;
 var debug = false;
 var debugMenu;
@@ -30,6 +30,7 @@ function Game() {
         xhttp.send();
     }
     this.gameOver = false;
+    this.levelWin = false;
 };
 
 function Ball(data = {}){
@@ -193,8 +194,20 @@ function drawCurrentLevel(){
         ctx.globalAlpha = 1;
         ctx.font = "bold 32px Courier New"
         ctx.textAlign = 'center';
-        ctx.fillStyle = 'white';
-        ctx.fillText("Game Over",levelCorner[0]+currentLevel.columns*tileSize/2,levelCorner[1]+currentLevel.rows*tileSize/2+8)
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText("Game Over",levelCorner[0]+currentLevel.columns*tileSize/2,levelCorner[1]+currentLevel.rows*tileSize/2+8);
+    }
+    
+    // draw level complete screen
+    if(main.levelWin && currentLevel.data.ball.fallSteps.length === 0){
+        ctx.fillStyle = "#000000";
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(levelCorner[0],levelCorner[1],currentLevel.columns * tileSize ,currentLevel.rows*tileSize);
+        ctx.globalAlpha = 1;
+        ctx.font = "bold 32px Courier New"
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#00ff00';
+        ctx.fillText("Level Complete",levelCorner[0]+currentLevel.columns*tileSize/2,levelCorner[1]+currentLevel.rows*tileSize/2+8);
     }
     
     debugMenu.innerHTML = JSON.stringify(currentBall).replace(/\,\"/g,'<br>').replace('{','').replace('}','');
@@ -204,65 +217,103 @@ function ballFallsTo(direction){
     var currentBall = currentLevel.data.ball;
     var checkTile = [currentBall.xTile,currentBall.yTile];
     var wallFound = false;
+    var reachEnd = false;
     
     currentBall.direction = direction;
     
     // in each direction, find if there's a wall in the way and then steps back one step to set ball destination
     if(direction === 'left'){
-        for(checkTile[0]; checkTile[0] >= -99; checkTile[0]--){
+        for(; checkTile[0] >= -99; checkTile[0]--){
             for(i = 0; i < currentLevel.data.walls.length; i++){
+                if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
+                    reachEnd = true;
+                    console.log("level complete");
+                    break;
+                }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
                     console.log("wall found at - "+checkTile);
                     break;
                 }
             };
-            if(wallFound) break;
+            if(reachEnd) break;
+            else if(wallFound){
+                checkTile[0]++;
+                break;
+            };
         };
-        checkTile[0]++;
+        
     }
     else if(direction === 'right'){
-        for(checkTile[0]; checkTile[0] < 99; checkTile[0]++){
+        for(; checkTile[0] < 99; checkTile[0]++){
             for(i = 0; i < currentLevel.data.walls.length; i++){
+                if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
+                    reachEnd = true;
+                    console.log("level complete");
+                    break;
+                }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
                     console.log("wall found at - "+checkTile);
                     break;
                 }
             };
-            if(wallFound) break;
+            if(reachEnd) break;
+            else if(wallFound){
+                checkTile[0]--;
+                break;
+            }
         };
-        checkTile[0]--;
     }
     else if(direction === 'up'){
-        for(checkTile[1]; checkTile[1] >= -99; checkTile[1]--){
+        for(; checkTile[1] >= -99; checkTile[1]--){
             for(i = 0; i < currentLevel.data.walls.length; i++){
+                if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
+                    reachEnd = true;
+                    console.log("level complete");
+                    break;
+                }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
                     console.log("wall found at - "+checkTile);
                     break;
                 }
             };
-            if(wallFound) break;
+            if(reachEnd) break;
+            else if(wallFound){
+                checkTile[1]++;
+                break;
+            }
         };
-        checkTile[1]++;
+        
     }
     else if(direction === 'down'){
-        for(checkTile[1]; checkTile[1] < 99; checkTile[1]++){
+        for(; checkTile[1] < 99; checkTile[1]++){
             for(i = 0; i < currentLevel.data.walls.length; i++){
+                if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
+                    reachEnd = true;
+                    console.log("level complete");
+                    break;
+                }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
                     console.log("wall found at - "+checkTile);
                     break;
                 }
             };
-            if(wallFound) break;
+            if(reachEnd) break;
+            else if(wallFound){
+                checkTile[1]--;
+                break;
+            }
         };
-        checkTile[1]--;
     }
     currentBall.setDestinationTile(checkTile);
     
-    if(!wallFound){
+    if(reachEnd){
+        main.levelWin = true;
+    }
+    else if(!wallFound){
         console.log("no wall found");
         main.gameOver = true;
     }
