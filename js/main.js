@@ -1,8 +1,7 @@
-var canvas, ctx = null;
+var canvas, ctx, debugMenu = null;
 var frameCounter = false;
 var frameCount = 0;
 var debug = false;
-var debugMenu;
 
 var currentLevel = {};
 var tileSize = 32;
@@ -12,7 +11,7 @@ var fallStepsArray = [];
 
 function Game() {
     this.currentLevel = 1;
-    this.setLevel = function (levelname) {
+    this.setLevel = function () {
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
@@ -26,7 +25,7 @@ function Game() {
                 currentLevel.data.ball = currentBall;
             }
         };
-        xhttp.open("GET", "leveldata/"+levelname+".json", true);
+        xhttp.open("GET", "leveldata/level"+this.currentLevel+".json", true);
         xhttp.send();
     }
     this.gameOver = false;
@@ -73,7 +72,7 @@ function init() {
     ctx = canvas.getContext('2d');
 
     main = new Game();
-    main.setLevel('level1');
+    main.setLevel();
     
     for(i = 1; i <= accelerationInteration; i++){
         fallStepsArray[i-1] = i * fallAcceleration;
@@ -87,9 +86,8 @@ function init() {
     window.requestAnimationFrame(draw);
     
     document.addEventListener('keydown',function(e){
-//        console.log(e);
         
-        if(currentLevel.data.ball.fallSteps.length === 0){
+        if(!main.gameOver && currentLevel.data.ball.fallSteps.length === 0){
             if(e.ctrlKey || e.altKey || e.shiftKey || e.metaKey){
                 return false;
             }
@@ -134,23 +132,24 @@ function draw() {
 function drawCurrentLevel(){
     var levelWidth = tileSize * currentLevel.columns;
     var levelHeight = tileSize * currentLevel.rows;
-    var levelCorner = [canvas.width/2-levelWidth/2,canvas.height/2-levelHeight/2];
     var currentBall = currentLevel.data.ball;
     
+    currentLevel.levelCorner = [canvas.width/2-levelWidth/2,canvas.height/2-levelHeight/2];
+
     ctx.strokeStyle = "#ff0000";
-    ctx.strokeRect(levelCorner[0],levelCorner[1],levelWidth,levelHeight);
+    ctx.strokeRect(currentLevel.levelCorner[0],currentLevel.levelCorner[1],levelWidth,levelHeight);
     
     //draw walls
     currentLevel.data.walls.forEach(function(wall){
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(levelCorner[0] + tileSize * wall[0], levelCorner[1] + tileSize * wall[1], tileSize, tileSize);
+        ctx.fillRect(currentLevel.levelCorner[0] + tileSize * wall[0], currentLevel.levelCorner[1] + tileSize * wall[1], tileSize, tileSize);
     });
     
     //draw ball
     ctx.fillStyle = "#00ff00";
     ctx.beginPath();
     ctx.arc(
-        levelCorner[0]+currentBall.xPos+tileSize/2, levelCorner[1]+currentBall.yPos+tileSize/2, 
+        currentLevel.levelCorner[0]+currentBall.xPos+tileSize/2, currentLevel.levelCorner[1]+currentBall.yPos+tileSize/2, 
         tileSize/2, 0, 2*Math.PI
     );
     ctx.fill();
@@ -180,34 +179,23 @@ function drawCurrentLevel(){
     ctx.fillStyle = "#0000ff";
     ctx.beginPath();
     ctx.arc(
-        levelCorner[0]+currentLevel.data.end[0]*tileSize+tileSize/2,
-        levelCorner[1]+currentLevel.data.end[1]*tileSize+tileSize/2, 
+        currentLevel.levelCorner[0]+currentLevel.data.end[0]*tileSize+tileSize/2,
+        currentLevel.levelCorner[1]+currentLevel.data.end[1]*tileSize+tileSize/2, 
         tileSize/4, 0, 2*Math.PI
     );
     ctx.fill();
     
     //draw game over screen
     if(main.gameOver){
-        ctx.fillStyle = "#000000";
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(levelCorner[0],levelCorner[1],currentLevel.columns * tileSize ,currentLevel.rows*tileSize);
-        ctx.globalAlpha = 1;
-        ctx.font = "bold 32px Courier New"
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText("Game Over",levelCorner[0]+currentLevel.columns*tileSize/2,levelCorner[1]+currentLevel.rows*tileSize/2+8);
+        drawScreen('#000000','Game Over','#ffffff');
     }
     
     // draw level complete screen
     if(main.levelWin && currentLevel.data.ball.fallSteps.length === 0){
-        ctx.fillStyle = "#000000";
-        ctx.globalAlpha = 0.5;
-        ctx.fillRect(levelCorner[0],levelCorner[1],currentLevel.columns * tileSize ,currentLevel.rows*tileSize);
-        ctx.globalAlpha = 1;
-        ctx.font = "bold 32px Courier New"
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText("Level Complete",levelCorner[0]+currentLevel.columns*tileSize/2,levelCorner[1]+currentLevel.rows*tileSize/2+8);
+        // drawScreen('#000000','Level Complete','#00ff00')
+        main.levelWin = false;
+        main.currentLevel++;
+        main.setLevel();
     }
     
     debugMenu.innerHTML = JSON.stringify(currentBall).replace(/\,\"/g,'<br>').replace('{','').replace('}','');
@@ -346,6 +334,17 @@ function ballFallsTo(direction){
     }
     
     console.log(currentBall);
+}
+
+function drawScreen(bgColor,text,textColor){
+    ctx.fillStyle = bgColor;
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(currentLevel.levelCorner[0],currentLevel.levelCorner[1],currentLevel.columns * tileSize ,currentLevel.rows*tileSize);
+    ctx.globalAlpha = 1;
+    ctx.font = "bold 32px Courier New"
+    ctx.textAlign = 'center';
+    ctx.fillStyle = textColor;
+    ctx.fillText(text,currentLevel.levelCorner[0]+currentLevel.columns*tileSize/2,currentLevel.levelCorner[1]+currentLevel.rows*tileSize/2+8);
 }
 
 function paintBg(color) {
