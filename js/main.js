@@ -87,7 +87,7 @@ function init() {
     
     document.addEventListener('keydown',function(e){
         
-        if(!main.gameOver && currentLevel.data.ball.fallSteps.length === 0){
+        if(Object.keys(currentLevel).length > 0 && !main.gameOver && currentLevel.data.ball.fallSteps.length === 0){
             if(e.ctrlKey || e.altKey || e.shiftKey || e.metaKey){
                 return false;
             }
@@ -124,7 +124,9 @@ function draw() {
         frameCount++;
     }
     
-    drawCurrentLevel();
+    if(Object.keys(currentLevel).length > 0){
+        drawCurrentLevel();
+    }
 
     window.requestAnimationFrame(draw);
 }
@@ -132,6 +134,7 @@ function draw() {
 function drawCurrentLevel(){
     var levelWidth = tileSize * currentLevel.columns;
     var levelHeight = tileSize * currentLevel.rows;
+    var currentBall = currentLevel.data.ball;
     
     currentLevel.levelCorner = [canvas.width/2-levelWidth/2,canvas.height/2-levelHeight/2];
 
@@ -148,28 +151,28 @@ function drawCurrentLevel(){
     ctx.fillStyle = "#00ff00";
     ctx.beginPath();
     ctx.arc(
-        currentLevel.levelCorner[0]+currentLevel.data.ball.xPos+tileSize/2, currentLevel.levelCorner[1]+currentLevel.data.ball.yPos+tileSize/2, 
+        currentLevel.levelCorner[0]+currentBall.xPos+tileSize/2, currentLevel.levelCorner[1]+currentBall.yPos+tileSize/2, 
         tileSize/2, 0, 2*Math.PI
     );
     ctx.fill();
     
-    if(fallStep = currentLevel.data.ball.fallSteps.shift()){        
-        switch(currentLevel.data.ball.direction){
+    if(fallStep = currentBall.fallSteps.shift()){        
+        switch(currentBall.direction){
             case 'left':
-                currentLevel.data.ball.xPos -= fallStep; 
-                currentLevel.data.ball.xTile -= fallStep / tileSize;
+                currentBall.xPos -= fallStep; 
+                currentBall.xTile -= fallStep / tileSize;
                 break;
             case 'right':
-                currentLevel.data.ball.xPos += fallStep; 
-                currentLevel.data.ball.xTile += fallStep / tileSize; 
+                currentBall.xPos += fallStep; 
+                currentBall.xTile += fallStep / tileSize; 
                 break;
             case 'up':
-                currentLevel.data.ball.yPos -= fallStep; 
-                currentLevel.data.ball.yTile -= fallStep / tileSize; 
+                currentBall.yPos -= fallStep; 
+                currentBall.yTile -= fallStep / tileSize; 
                 break;
             case 'down':
-                currentLevel.data.ball.yPos += fallStep; 
-                currentLevel.data.ball.yTile += fallStep / tileSize; 
+                currentBall.yPos += fallStep; 
+                currentBall.yTile += fallStep / tileSize; 
                 break;
         }
     }
@@ -197,7 +200,7 @@ function drawCurrentLevel(){
         main.setLevel();
     }
     
-    debugMenu.innerHTML = JSON.stringify(currentLevel.data.ball).replace(/\,\"/g,'<br>').replace('{','').replace('}','');
+    debugMenu.innerHTML = JSON.stringify(currentBall).replace(/\,\"/g,'<br>').replace('{','').replace('}','');
 }
 
 function ballFallsTo(direction){
