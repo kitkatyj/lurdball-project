@@ -10,19 +10,40 @@ var accelerationInteration = 99;
 var fallStepsArray = [];
 
 function Game() {
-    this.currentLevel = 1;
+    this.maxLevel = 2;
+    this.currentLevel = 0;
     this.setLevel = function () {
+        this.currentLevel %= this.maxLevel;
+
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
                 currentLevel = JSON.parse(this.responseText);
         
-                var currentBall = new Ball({
+                currentLevel.data.ball = new Ball({
                     "xTile":currentLevel.data.ball[0],
                     "yTile":currentLevel.data.ball[1]
+                });;
+
+                currentLevel.data.spritesTemp = [];
+
+                currentLevel.data.sprites.forEach(function(sprite){
+                    sprite.pos.forEach(function(spritePos){
+                        var spriteTemp = new Sprite({
+                            "xTile":spritePos[0],
+                            "yTile":spritePos[1],
+                            "totalFrames":sprite.totalFrames,
+                            "framesPerRow":sprite.framesPerRow,
+                            "src":"res/"+sprite.src+".png",
+                            "speed":sprite.speed
+                        });
+
+                        currentLevel.data.spritesTemp.push(spriteTemp);
+                    });
                 });
 
-                currentLevel.data.ball = currentBall;
+                currentLevel.data.sprites = currentLevel.data.spritesTemp;
+                delete currentLevel.data.spritesTemp;
             }
         };
         xhttp.open("GET", "leveldata/level"+this.currentLevel+".json", true);
@@ -32,21 +53,42 @@ function Game() {
     this.levelWin = false;
 };
 
+function Sprite(data = {}){
+    // tile units
+    this.xTile = data.xTile || 0;
+    this.yTile = data.yTile || 0;
+
+    // pixel units
+    this.xPos = this.xTile * tileSize;
+    this.yPos = this.yTile * tileSize;
+
+
+    this.totalFrames = data.totalFrames;
+    this.framesPerRow = data.framesPerRow;
+    this.speed = data.speed || 1/2;
+    
+    if(data.src){
+        this.src = data.src;
+        
+        var imgTemp = new Image();
+        imgTemp.src = data.src;
+        this.img = imgTemp;
+    }
+}
+
 function Ball(data = {}){
+    Sprite.call(this,data);
+
     this.direction = 'neutral';
     this.fallSteps = [];
     
     // tile units
-    this.xTile = data.xTile || 0;
-    this.yTile = data.yTile || 0;
     this.destinationXTile = this.xTile;
     this.destinationYTile = this.yTile;
     
     // pixel units
     this.xVel = 0;
     this.yVel = 0;
-    this.xPos = this.xTile * tileSize;
-    this.yPos = this.yTile * tileSize;
     this.destinationXPos = this.destinationXTile * tileSize;
     this.destinationYPos = this.destinationYTile * tileSize;
     
@@ -121,8 +163,9 @@ function draw() {
         ctx.textAlign = "right";
         ctx.fillStyle = "white";
         ctx.fillText(frameCount, canvas.width, 16);
-        frameCount++;
     }
+
+    frameCount++;
     
     if(Object.keys(currentLevel).length > 0){
         drawCurrentLevel();
@@ -138,8 +181,9 @@ function drawCurrentLevel(){
     
     currentLevel.levelCorner = [canvas.width/2-levelWidth/2,canvas.height/2-levelHeight/2];
 
-    ctx.strokeStyle = "#ff0000";
-    ctx.strokeRect(currentLevel.levelCorner[0],currentLevel.levelCorner[1],levelWidth,levelHeight);
+    // draw level perimeter
+    // ctx.strokeStyle = "#ff0000";
+    // ctx.strokeRect(currentLevel.levelCorner[0],currentLevel.levelCorner[1],levelWidth,levelHeight);
     
     //draw walls
     currentLevel.data.walls.forEach(function(wall){
@@ -186,21 +230,36 @@ function drawCurrentLevel(){
         tileSize/4, 0, 2*Math.PI
     );
     ctx.fill();
+
+    // draw sprites
+    currentLevel.data.sprites.forEach(function(sprite){
+        // console.log(sprite);
+        drawSprite(sprite);
+    });
     
     //draw game over screen
     if(main.gameOver){
         drawScreen('#000000','Game Over','#ffffff');
     }
     
-    // draw level complete screen
+    // if level complete
     if(main.levelWin && currentLevel.data.ball.fallSteps.length === 0){
-        // drawScreen('#000000','Level Complete','#00ff00')
         main.levelWin = false;
         main.currentLevel++;
         main.setLevel();
     }
     
     debugMenu.innerHTML = JSON.stringify(currentBall).replace(/\,\"/g,'<br>').replace('{','').replace('}','');
+}
+
+function drawSprite(sprite){    
+    var frameIndex = Math.floor(frameCount * sprite.speed) % sprite.totalFrames;
+    
+    var rows = Math.floor(sprite.totalFrames / sprite.framesPerRow);
+    var frameStartX = (frameIndex % sprite.framesPerRow) * tileSize;
+    var frameStartY = (Math.floor(frameIndex / sprite.framesPerRow) % rows) * tileSize;
+    
+    ctx.drawImage(sprite.img,frameStartX,frameStartY,tileSize,tileSize,currentLevel.levelCorner[0]+sprite.xPos,currentLevel.levelCorner[1]+sprite.yPos,tileSize,tileSize);
 }
 
 function ballFallsTo(direction){
@@ -217,12 +276,12 @@ function ballFallsTo(direction){
             for(i = 0; i < currentLevel.data.walls.length; i++){
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
                     reachEnd = true;
-                    console.log("level complete");
+                    // console.log("level complete");
                     break;
                 }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
-                    console.log("wall found at - "+checkTile);
+                    // console.log("wall found at - "+checkTile);
                     break;
                 }
             };
@@ -239,12 +298,12 @@ function ballFallsTo(direction){
             for(i = 0; i < currentLevel.data.walls.length; i++){
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
                     reachEnd = true;
-                    console.log("level complete");
+                    // console.log("level complete");
                     break;
                 }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
-                    console.log("wall found at - "+checkTile);
+                    // console.log("wall found at - "+checkTile);
                     break;
                 }
             };
@@ -260,12 +319,12 @@ function ballFallsTo(direction){
             for(i = 0; i < currentLevel.data.walls.length; i++){
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
                     reachEnd = true;
-                    console.log("level complete");
+                    // console.log("level complete");
                     break;
                 }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
-                    console.log("wall found at - "+checkTile);
+                    // console.log("wall found at - "+checkTile);
                     break;
                 }
             };
@@ -282,12 +341,12 @@ function ballFallsTo(direction){
             for(i = 0; i < currentLevel.data.walls.length; i++){
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.end)){
                     reachEnd = true;
-                    console.log("level complete");
+                    // console.log("level complete");
                     break;
                 }
                 if(JSON.stringify(checkTile) === JSON.stringify(currentLevel.data.walls[i])){
                     wallFound = true;
-                    console.log("wall found at - "+checkTile);
+                    // console.log("wall found at - "+checkTile);
                     break;
                 }
             };
@@ -304,7 +363,7 @@ function ballFallsTo(direction){
         main.levelWin = true;
     }
     else if(!wallFound){
-        console.log("no wall found");
+        // console.log("no wall found");
         main.gameOver = true;
     }
     
@@ -335,13 +394,15 @@ function ballFallsTo(direction){
         }
     }
     
-    console.log(currentBall);
+    // console.log(currentBall);
 }
 
 function drawScreen(bgColor,text,textColor){
+    var padding = 20;
+
     ctx.fillStyle = bgColor;
     ctx.globalAlpha = 0.5;
-    ctx.fillRect(currentLevel.levelCorner[0],currentLevel.levelCorner[1],currentLevel.columns * tileSize ,currentLevel.rows*tileSize);
+    ctx.fillRect(currentLevel.levelCorner[0]-padding,currentLevel.levelCorner[1]-padding,currentLevel.columns * tileSize + padding*2 ,currentLevel.rows*tileSize + padding*2);
     ctx.globalAlpha = 1;
     ctx.font = "bold 32px Courier New"
     ctx.textAlign = 'center';
