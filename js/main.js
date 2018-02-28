@@ -42,6 +42,18 @@ function Game() {
                     });
                 });
 
+                if(endPortal = currentLevel.data.end){
+                    var endPortalSprite = new Sprite({
+                        "xTile":endPortal[0],
+                        "yTile":endPortal[1],
+                        "totalFrames":24,
+                        "framesPerRow":4,
+                        "src":"res/endportal.png",
+                        "speed":0.5
+                    });
+                    currentLevel.data.spritesTemp.push(endPortalSprite);
+                }
+
                 currentLevel.data.sprites = currentLevel.data.spritesTemp;
                 delete currentLevel.data.spritesTemp;
             }
@@ -220,16 +232,6 @@ function drawCurrentLevel(){
                 break;
         }
     }
-    
-    //draw end
-    ctx.fillStyle = "#0000ff";
-    ctx.beginPath();
-    ctx.arc(
-        currentLevel.levelCorner[0]+currentLevel.data.end[0]*tileSize+tileSize/2,
-        currentLevel.levelCorner[1]+currentLevel.data.end[1]*tileSize+tileSize/2, 
-        tileSize/4, 0, 2*Math.PI
-    );
-    ctx.fill();
 
     // draw sprites
     currentLevel.data.sprites.forEach(function(sprite){
