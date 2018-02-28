@@ -1,16 +1,16 @@
 {
-    "rows":5,
+    "rows":1,
     "columns":10,
     "data":{
-        "ball":[1,2],
-        "end":[9,2],
+        "ball":[1,0],
+        "end":[9,0],
         "walls":[
-            [0,2]
+            [0,0]
         ],
         "sprites":[
             {
                 "src":"arrow-right",
-                "pos":[[3,2]],
+                "pos":[[2,0]],
                 "framesPerRow":4,
                 "totalFrames":24,
                 "speed":0.5

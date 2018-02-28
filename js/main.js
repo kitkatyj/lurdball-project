@@ -10,10 +10,11 @@ var accelerationInteration = 99;
 var fallStepsArray = [];
 
 function Game() {
-    this.maxLevel = 2;
+    this.maxLevel = 5;
     this.currentLevel = 0;
     this.setLevel = function () {
         this.currentLevel %= this.maxLevel;
+        localStorage.currentLevel = this.currentLevel;
 
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
@@ -35,7 +36,9 @@ function Game() {
                             "totalFrames":sprite.totalFrames,
                             "framesPerRow":sprite.framesPerRow,
                             "src":"res/"+sprite.src+".png",
-                            "speed":sprite.speed
+                            "speed":sprite.speed,
+                            "width":sprite.width,
+                            "height":sprite.height
                         });
 
                         currentLevel.data.spritesTemp.push(spriteTemp);
@@ -73,7 +76,8 @@ function Sprite(data = {}){
     // pixel units
     this.xPos = this.xTile * tileSize;
     this.yPos = this.yTile * tileSize;
-
+    this.width = data.width || 32;
+    this.height = data.height || 32;
 
     this.totalFrames = data.totalFrames;
     this.framesPerRow = data.framesPerRow;
@@ -85,6 +89,11 @@ function Sprite(data = {}){
         var imgTemp = new Image();
         imgTemp.src = data.src;
         this.img = imgTemp;
+    }
+
+    this.recalibratePos = function(){
+        this.xPos = this.xTile * tileSize;
+        this.yPos = this.yTile * tileSize;
     }
 }
 
@@ -126,6 +135,9 @@ function init() {
     ctx = canvas.getContext('2d');
 
     main = new Game();
+    if(localStorage.currentLevel){
+        main.currentLevel = parseInt(localStorage.currentLevel);
+    }
     main.setLevel();
     
     for(i = 1; i <= accelerationInteration; i++){
@@ -170,12 +182,23 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     paintBg('#200040');
 
+    ctx.font = "bold 32px Courier New";
+
     if (frameCounter) {
-        ctx.font = "bold 16px Courier New";
+        ctx.fillStyle = "#ffffff";
         ctx.textAlign = "right";
-        ctx.fillStyle = "white";
         ctx.fillText(frameCount, canvas.width, 16);
     }
+
+    // draw level counter
+    var counterWidth = 100;
+    ctx.fillStyle = "#000000";
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(canvas.width/2-counterWidth,32,counterWidth*2,44);
+    ctx.fillStyle = "#ffffff";
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center";
+    ctx.fillText("Level "+(main.currentLevel+1),canvas.width/2,64);
 
     frameCount++;
     
@@ -197,6 +220,11 @@ function drawCurrentLevel(){
     // ctx.strokeStyle = "#ff0000";
     // ctx.strokeRect(currentLevel.levelCorner[0],currentLevel.levelCorner[1],levelWidth,levelHeight);
     
+    // draw sprites
+    currentLevel.data.sprites.forEach(function(sprite){
+        drawSprite(sprite);
+    });
+
     //draw walls
     currentLevel.data.walls.forEach(function(wall){
         ctx.fillStyle = "#ffffff";
@@ -232,12 +260,6 @@ function drawCurrentLevel(){
                 break;
         }
     }
-
-    // draw sprites
-    currentLevel.data.sprites.forEach(function(sprite){
-        // console.log(sprite);
-        drawSprite(sprite);
-    });
     
     //draw game over screen
     if(main.gameOver){
@@ -254,14 +276,14 @@ function drawCurrentLevel(){
     debugMenu.innerHTML = JSON.stringify(currentBall).replace(/\,\"/g,'<br>').replace('{','').replace('}','');
 }
 
-function drawSprite(sprite){    
+function drawSprite(sprite){
     var frameIndex = Math.floor(frameCount * sprite.speed) % sprite.totalFrames;
     
     var rows = Math.floor(sprite.totalFrames / sprite.framesPerRow);
-    var frameStartX = (frameIndex % sprite.framesPerRow) * tileSize;
-    var frameStartY = (Math.floor(frameIndex / sprite.framesPerRow) % rows) * tileSize;
+    var frameStartX = (frameIndex % sprite.framesPerRow) * sprite.width;
+    var frameStartY = (Math.floor(frameIndex / sprite.framesPerRow) % rows) * sprite.height;
     
-    ctx.drawImage(sprite.img,frameStartX,frameStartY,tileSize,tileSize,currentLevel.levelCorner[0]+sprite.xPos,currentLevel.levelCorner[1]+sprite.yPos,tileSize,tileSize);
+    ctx.drawImage(sprite.img,frameStartX,frameStartY,sprite.width,sprite.height,currentLevel.levelCorner[0]+sprite.xPos,currentLevel.levelCorner[1]+sprite.yPos,tileSize,tileSize);
 }
 
 function ballFallsTo(direction){
