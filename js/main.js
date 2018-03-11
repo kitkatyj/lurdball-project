@@ -1,10 +1,10 @@
 var canvas, ctx, debugMenu = null;
 var frameCounter = false;
 var frameCount = 0;
-var debug = true;
+var debug = false;
 
 var currentLevel = {};
-var tileSize = 32;
+var tileSize = 64;
 var buttonPadding = 8;
 var fallAcceleration = 2;
 var accelerationInteration = 99;
