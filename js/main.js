@@ -1,20 +1,30 @@
 var canvas, ctx, debugMenu = null;
 var frameCounter = false;
 var frameCount = 0;
-var debug = false;
+var debug = true;
 
 var currentLevel = {};
 var tileSize = 32;
+var buttonPadding = 8;
 var fallAcceleration = 2;
 var accelerationInteration = 99;
 var fallStepsArray = [];
 
 function Game() {
-    this.maxLevel = 5;
+    this.gameOver = false;
+    this.levelWin = false;
+
+    this.cursorPos = [0,0];
+    this.mouseDown = false;
+    this.mouseUp = false;
+    this.buttonHover = false;
+
+    this.totalLevels = 5;
     this.currentLevel = 0;
     this.setLevel = function () {
-        this.currentLevel %= this.maxLevel;
+        this.currentLevel %= this.totalLevels;
         localStorage.currentLevel = this.currentLevel;
+        var main = this;
 
         var xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function () {
@@ -59,13 +69,61 @@ function Game() {
 
                 currentLevel.data.sprites = currentLevel.data.spritesTemp;
                 delete currentLevel.data.spritesTemp;
+
+                currentLevel.data.buttonsRow = [];
+                currentLevel.data.buttonsWidth = 0;
             }
         };
         xhttp.open("GET", "leveldata/level"+this.currentLevel+".json", true);
         xhttp.send();
     }
-    this.gameOver = false;
-    this.levelWin = false;
+    this.resetLevel = function(){
+        this.gameOver = false;
+        this.levelWin = false;
+        this.setLevel();
+    }
+
+    this.addButton = function(data = {}){
+        var newButton = new Button({
+            "name":data.name,
+            "bgColor":data.bgColor,
+            "bgHoverColor":data.bgHoverColor,
+            "bgClickColor":data.bgClickColor,
+            "action":data.action
+        });
+        currentLevel.data.buttonsRow.push(newButton);
+        newButton.posOffset += currentLevel.data.buttonsWidth;
+        currentLevel.data.buttonsWidth += newButton.width;
+    }
+    this.removeButton = function(buttonName){
+        for(i = 0; i < currentLevel.data.buttonsRow.length; i++){
+            if(currentLevel.data.buttonsRow[i].name === buttonName){
+                var removedButton = currentLevel.data.buttonsRow.splice(i,1);
+                currentLevel.data.buttonsWidth -= removedButton.width;
+                break;
+            }
+        }
+    }
+    this.addTestButton = function(){
+        this.addButton({
+            "name":"Test",
+            "bgColor":"#007700",
+            "bgHoverColor":"#009900",
+            "action":"console.log('hi')"
+        });
+    }
+    this.addResetButton = function(){
+        this.addButton({
+            "name":"Reset level",
+            "bgColor":"#990000",
+            "bgHoverColor":"#aa0000",
+            "bgClickColor":"#cc0000",
+            "action":"main.resetLevel()"
+        });
+    }
+    this.removeResetButton = function(){
+        this.removeButton("Reset level");
+    }
 };
 
 function Sprite(data = {}){
@@ -130,6 +188,20 @@ function Ball(data = {}){
     }
 }
 
+function Button(data = {}){
+    this.hover = false;
+
+    this.name = data.name;
+    this.bgColor = data.bgColor;
+    this.bgHoverColor = data.bgHoverColor || data.bgColor;
+    this.bgClickColor = data.bgClickColor || data.bgHoverColor || data.bgClickColor;
+    this.width = (data.name.length * 10)*2 + buttonPadding*2;
+    this.height = 44 + buttonPadding;
+    this.posOffset = 0;
+
+    this.action = data.action;
+}
+
 function init() {
     canvas = document.getElementById('main');
     ctx = canvas.getContext('2d');
@@ -145,20 +217,16 @@ function init() {
     }
     
     debugMenu = document.getElementById('debug');
-    if(!debug){
-        debugMenu.style.display = 'none';
-    }
+    if(!debug) debugMenu.style.display = 'none';
 
     window.requestAnimationFrame(draw);
     
     document.addEventListener('keydown',function(e){
-        
         if(Object.keys(currentLevel).length > 0 && !main.gameOver && currentLevel.data.ball.fallSteps.length === 0){
             if(e.ctrlKey || e.altKey || e.shiftKey || e.metaKey){
                 return false;
             }
 
-            // left, up, right, down
             if(e.keyCode === 37){
                 ballFallsTo('left');
             }
@@ -173,11 +241,25 @@ function init() {
             }
         }
     });
+
+    document.addEventListener('mousemove',function(e){
+        main.cursorPos[0] = e.offsetX;
+        main.cursorPos[1] = e.offsetY;
+    });
+    document.addEventListener('mousedown',function(e){
+        main.mouseDown = true;
+    });
+    document.addEventListener('mouseup',function(e){
+        main.mouseDown = false;
+        main.mouseUp = true;
+    });
 }
 
 function draw() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+
+    main.buttonHover = false;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     paintBg('#200040');
@@ -190,6 +272,20 @@ function draw() {
         ctx.fillText(frameCount, canvas.width, 16);
     }
 
+    frameCount++;
+    
+    if(Object.keys(currentLevel).length > 0){
+        drawCurrentLevel();
+    }
+
+    // draw buttons
+    currentLevel.data.buttonsRow.forEach(function(button,index){
+        drawButton(button,index);
+    });
+
+    if(main.buttonHover) canvas.style.cursor = 'pointer';
+    else canvas.style.cursor = 'default';
+
     // draw level counter
     var counterWidth = 100;
     ctx.fillStyle = "#000000";
@@ -200,10 +296,8 @@ function draw() {
     ctx.textAlign = "center";
     ctx.fillText("Level "+(main.currentLevel+1),canvas.width/2,64);
 
-    frameCount++;
-    
-    if(Object.keys(currentLevel).length > 0){
-        drawCurrentLevel();
+    if(main.mouseUp){
+        main.mouseUp = false;
     }
 
     window.requestAnimationFrame(draw);
@@ -273,7 +367,7 @@ function drawCurrentLevel(){
         main.setLevel();
     }
     
-    debugMenu.innerHTML = JSON.stringify(currentBall).replace(/\,\"/g,'<br>').replace('{','').replace('}','');
+    debugMenu.innerHTML = JSON.stringify(main).replace(/\,\"/g,'<br>"');
 }
 
 function drawSprite(sprite){
@@ -284,6 +378,33 @@ function drawSprite(sprite){
     var frameStartY = (Math.floor(frameIndex / sprite.framesPerRow) % rows) * sprite.height;
     
     ctx.drawImage(sprite.img,frameStartX,frameStartY,sprite.width,sprite.height,currentLevel.levelCorner[0]+sprite.xPos,currentLevel.levelCorner[1]+sprite.yPos,tileSize,tileSize);
+}
+
+function drawButton(button,index){
+    var padding = 8;
+    var noOfButtons = currentLevel.data.buttonsRow.length;
+    var buttonsWidth = currentLevel.data.buttonsWidth;
+    var xPos = canvas.width/2-buttonsWidth/2+button.posOffset;
+    var yPos = canvas.height-74-padding/2;
+
+    if(main.cursorPos[0] > xPos && main.cursorPos[0] < xPos+button.width && main.cursorPos[1] > yPos && main.cursorPos[1] < yPos+button.height){
+        main.buttonHover = true;
+        ctx.fillStyle = button.bgHoverColor;
+        if(main.mouseDown){
+            ctx.fillStyle = button.bgClickColor;
+        }
+        if(main.mouseUp){
+            eval(button.action);
+        }
+    }
+    else {
+        ctx.fillStyle = button.bgColor;
+    }
+
+    ctx.fillRect(xPos, yPos, button.width, button.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.fillText(button.name,xPos+button.width/2,yPos+button.height-16);
 }
 
 function ballFallsTo(direction){
@@ -389,6 +510,7 @@ function ballFallsTo(direction){
     else if(!wallFound){
         // console.log("no wall found");
         main.gameOver = true;
+        main.addResetButton();
     }
     
     var fallBuffer,lastFallStepIndex = 0;
