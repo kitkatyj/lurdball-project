@@ -278,11 +278,6 @@ function draw() {
         drawCurrentLevel();
     }
 
-    // draw buttons
-    currentLevel.data.buttonsRow.forEach(function(button,index){
-        drawButton(button,index);
-    });
-
     if(main.buttonHover) canvas.style.cursor = 'pointer';
     else canvas.style.cursor = 'default';
 
@@ -366,6 +361,11 @@ function drawCurrentLevel(){
         main.currentLevel++;
         main.setLevel();
     }
+    
+    // draw buttons
+    currentLevel.data.buttonsRow.forEach(function(button,index){
+        drawButton(button,index);
+    });
     
     debugMenu.innerHTML = JSON.stringify(main).replace(/\,\"/g,'<br>"');
 }
